@@ -15,11 +15,8 @@
     #include "cytypes.h"
     #include "stdio.h"
     
-    #define TRANSMIT_BUFFER_SIZE 64
     
     CY_ISR_PROTO (Custom_ISR_ADC);
     
-    //char DataBuffer[TRANSMIT_BUFFER_SIZE];
-    volatile uint8 PacketReadyFlag;
 #endif
 /* [] END OF FILE */
