@@ -26,10 +26,10 @@
 extern uint8_t slaveBuffer[];
 uint32 value_digit_TEMP=0;
 uint32 value_digit_LDR=0;
-uint16 value_mv_TEMP=0;
-uint16 value_mv_LDR=0;
+float value_mv_TEMP=0;
+float value_mv_LDR=0;
 uint16 value_TEMP=0;
-uint16 R_LDR=0;
+float R_LDR=0;
 uint16 value_Lux=0;
 uint8 n_cycles=0;
 uint8 n_samples=0;
@@ -42,8 +42,10 @@ CY_ISR(Custom_ISR_ADC)
     Timer_ISR_ReadStatusRegister();
     
     if (n_samples==0){
-    n_samples = (slaveBuffer[0] & MASK_N_SAMPLES)>>2;
+        n_samples = (slaveBuffer[0] & MASK_N_SAMPLES)>>2;
+        Timer_ISR_WritePeriod(slaveBuffer[1]);
     }
+    
     else{
     
     // Temperature sampling (if active)
@@ -83,7 +85,8 @@ CY_ISR(Custom_ISR_ADC)
             value_Lux=0;
         }
         
-        /*updating the values of the control register (number of samples and timer period, changed
+        /* The user can change both the number of samples and the Timer Period (ISR period of sampling).
+        Updating the values of the control register (number of samples and timer period, changed
         by the user).
         If the number of samples inserted by the user, is not coherent with the period inserted (or
         the period inserted is too short to sample that number of samples, in order to send data 
@@ -96,7 +99,7 @@ CY_ISR(Custom_ISR_ADC)
             Timer_ISR_WritePeriod(1000/(50*n_samples));
             
         /*
-            Timer_ISR_WritePeriod(1000/slaveBuffer[1]*n_samples)); //se slaveBuffer[1] contiene la frequenza di trasmissione
+            Timer_ISR_WritePeriod(1000/slaveBuffer[1]*n_samples)); //if slaveBuffer[1] contains the transmission frequency
         */
         }  
         

@@ -25,6 +25,7 @@
 #define LOW 0
 
 uint8_t slaveBuffer[SLAVE_BUFFER_SIZE]; // Buffer for the slave device
+extern uint8 n_samples;
 
 int main(void)
 {
@@ -34,10 +35,10 @@ int main(void)
     Timer_ISR_Start();
     isr_StartEx(Custom_ISR_ADC);
     
-    //set Control Register 0: 5 samples RICORDARSI DI RIMETTERLA A 0!
+    //set Control Register 0: set to 0 (the user changes this value at the beginning, eg. 5 samples)
     slaveBuffer[0]= 0; //0b00010111;
     
-    //set Control Register 1: Timer Period equal to 4 RICORDARSI DI RIMETTERLA A 0!
+    //set Control Register 1 (Timer Period) (the user changes this value at the beginning, eg. 4 ms)
     slaveBuffer[1]= 0; //0b00000100;
     
     //set WHO I AM
@@ -54,6 +55,10 @@ int main(void)
     
     for(;;)
     {
+        if (n_samples==0){
+        Timer_ISR_WritePeriod(slaveBuffer[1]);
+    }
+        
         //if the sampling is active for both channels, the LED is ON.
         if((slaveBuffer[0] & MASK_STATUS_BITS)== SAMPLING_BOTH){
             Pin_LED_Write(HIGH);      
