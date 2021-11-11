@@ -11,69 +11,89 @@
 */
 #include "Interrupt_Routines.h"
 #include "project.h"
+
+#define NO_SAMPLING 0b00000000
+#define SAMPLING_TEMPERATURE 0b00000001
+#define SAMPLING_LDR 0b00000010
+#define SAMPLING_BOTH 0b00000011
+
+#define MASK_STATUS_BIT0 0b00000001
+#define MASK_STATUS_BIT1 0b00000010
+#define MASK_STATUS_BITS 0b00000011
+
+#define MASK_N_SAMPLES 0b00111100
+
 extern uint8_t slaveBuffer[];
 uint32 value_digit_TEMP=0;
 uint32 value_digit_LDR=0;
 uint16 value_mv_TEMP=0;
 uint16 value_mv_LDR=0;
 uint16 value_TEMP=0;
+uint16 R_LDR=0;
+uint16 value_Lux=0;
 uint8 n_cycles=0;
-uint8 n_samples=0;
+uint8 n_samples=5;
 int16 TEMP_avg=0;
 uint16 LDR_avg=0;
 
 
-
- 
 CY_ISR(Custom_ISR_ADC)
 {
     Timer_ISR_ReadStatusRegister();
-           
     
+    if (n_samples==0){
+    n_samples = (slaveBuffer[0] & MASK_N_SAMPLES)>>2;
+    }
     
-    if((slaveBuffer[0] & 0b00000001)==1){
+    // Temperature sampling (if active)
+    if((slaveBuffer[0] & MASK_STATUS_BIT0)==SAMPLING_TEMPERATURE){
         AMux_Select(0);
         value_digit_TEMP=ADC_DelSig_Read32();
-        if (value_digit_TEMP<0)  value_digit_TEMP=0;
-        if (value_digit_TEMP>4294967295)  value_digit_TEMP=4294967295;
         value_mv_TEMP=ADC_DelSig_CountsTo_mVolts(value_digit_TEMP);
-        value_TEMP+=0.1*value_mv_TEMP-50;
+        value_TEMP+=0.1*value_mv_TEMP-50; //conversion from mV to Celsius Degrees (calculated from datasheet)
     }
     
-    if((slaveBuffer[0] & 0b00000010)==2){
+    // LDR sampling (if active)
+    if((slaveBuffer[0] & MASK_STATUS_BIT1)==SAMPLING_LDR){
         AMux_Select(1);
         value_digit_LDR=ADC_DelSig_Read32();
-        if (value_digit_LDR<0)  value_digit_LDR=0;
-        if (value_digit_LDR>4294967295)  value_digit_LDR=4294967295;
-        value_mv_LDR+=ADC_DelSig_CountsTo_mVolts(value_digit_LDR);
-        //AGGIUNGERE CONVERSIONE DA MV A R E DA R A INTENSITà LUCE
+        value_mv_LDR=ADC_DelSig_CountsTo_mVolts(value_digit_LDR);
+        R_LDR=10*((5000/value_mv_LDR)-1); //conversion from mV to resistance in kOhm (due to the voltage divider)
+        value_Lux+=-100*R_LDR+10000; //conversion from kOhm to lux (calculated from datasheet)
     }
     
-    n_cycles++;
+    n_cycles++;  //number of times that the ISR has occurred
     if (n_cycles==n_samples){
         n_cycles=0;
-            
-        if((slaveBuffer[0] & 0b00000001)==1){
+        
+        //if the temperature sampling is active, we calculate the mean
+        if((slaveBuffer[0] & MASK_STATUS_BIT0) == SAMPLING_TEMPERATURE){
             TEMP_avg=value_TEMP/n_samples;
             slaveBuffer[3]=TEMP_avg>>8;
             slaveBuffer[4]=TEMP_avg & 0XFF;
             value_TEMP=0;
         }
 
-        if((slaveBuffer[0] & 0b00000010)==2){
-            LDR_avg=value_mv_LDR/n_samples;
+        //if the LDR sampling is active, we calculate the mean
+        if((slaveBuffer[0] & MASK_STATUS_BIT1) == SAMPLING_LDR){
+            LDR_avg=value_Lux/n_samples;
             slaveBuffer[5]=LDR_avg>>8;
             slaveBuffer[6]=LDR_avg & 0XFF;
-            value_mv_LDR=0;
+            value_Lux=0;
         }
         
-        n_samples= (slaveBuffer[0] & 0b00111100)>>2;
+        /*updating the values of the control register (number of samples and timer period, changed
+        by the user).
+        If the number of samples inserted by the user, is not coherent with the period inserted (or
+        the period inserted is too short to sample that number of samples, in order to send data 
+        at 50 Hz), we set the period as the minimum period between the two.*/
+        
+        n_samples = (slaveBuffer[0] & MASK_N_SAMPLES)>>2;
         Timer_ISR_WritePeriod(slaveBuffer[1]);
         
         if((1000/(50*n_samples)<slaveBuffer[1])){
             Timer_ISR_WritePeriod(1000/(50*n_samples));
-        }
-       
+        }  
         
     }
     

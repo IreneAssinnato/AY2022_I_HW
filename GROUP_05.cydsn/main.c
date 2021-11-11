@@ -13,7 +13,16 @@
 #include "Interrupt_Routines.h"
 
 #define SLAVE_BUFFER_SIZE 7
-extern int8 n_samples;
+
+#define NO_SAMPLING 0b00000000
+#define SAMPLING_TEMPERATURE 0b00000001
+#define SAMPLING_LDR 0b00000010
+#define SAMPLING_BOTH 0b00000011
+
+#define MASK_STATUS_BITS 0b00000011
+
+#define HIGH 1
+#define LOW 0
 
 uint8_t slaveBuffer[SLAVE_BUFFER_SIZE]; // Buffer for the slave device
 
@@ -25,18 +34,16 @@ int main(void)
     Timer_ISR_Start();
     isr_StartEx(Custom_ISR_ADC);
     
-    /* Place your initialization/startup code here (e.g. MyInst_Start()) */
-
-    //set Control Register 0: 5 samples 
+    //set Control Register 0: 5 samples RICORDARSI DI RIMETTERLA A 0!
     slaveBuffer[0]=0b00010111;
     
-    //set Control Register 1: Timer Period equal to 10
-    slaveBuffer[1]=0b00001010;
+    //set Control Register 1: Timer Period equal to 4 RICORDARSI DI RIMETTERLA A 0!
+    slaveBuffer[1]=0b00000100;
     
     //set WHO I AM
     slaveBuffer[2]= 0xBC;
     
-    //set 3,4,5,6 slaveBuffer
+    //set data byte (bits 3,4,5,6 slaveBuffer). Default: 0 
     slaveBuffer[3]=0;
     slaveBuffer[4]=0;
     slaveBuffer[5]=0;
@@ -47,21 +54,13 @@ int main(void)
     
     for(;;)
     {
-      /*  if(EZI2C_GetActivity()==EZI2C_STATUS_READ1 ){
-           // n_samples=0;
-           // Timer_ISR_ReadStatusRegister();
-             slaveBuffer[2]++;
-        }
-     */   
-        
-        if((slaveBuffer[0] & 0b00000011)== 0b00000011){
-            Pin_LED_Write(1);      
+        //if the sampling is active for both channels, the LED is ON.
+        if((slaveBuffer[0] & MASK_STATUS_BITS)== SAMPLING_BOTH){
+            Pin_LED_Write(HIGH);      
         }
         else{
-            Pin_LED_Write(0);
+            Pin_LED_Write(LOW);
         }
-        
-        /* Place your application code here. */
     }
 }
 
