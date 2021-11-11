@@ -32,7 +32,7 @@ uint16 value_TEMP=0;
 uint16 R_LDR=0;
 uint16 value_Lux=0;
 uint8 n_cycles=0;
-uint8 n_samples=5;
+uint8 n_samples=0;
 int16 TEMP_avg=0;
 uint16 LDR_avg=0;
 
@@ -44,6 +44,7 @@ CY_ISR(Custom_ISR_ADC)
     if (n_samples==0){
     n_samples = (slaveBuffer[0] & MASK_N_SAMPLES)>>2;
     }
+    else{
     
     // Temperature sampling (if active)
     if((slaveBuffer[0] & MASK_STATUS_BIT0)==SAMPLING_TEMPERATURE){
@@ -59,7 +60,7 @@ CY_ISR(Custom_ISR_ADC)
         value_digit_LDR=ADC_DelSig_Read32();
         value_mv_LDR=ADC_DelSig_CountsTo_mVolts(value_digit_LDR);
         R_LDR=10*((5000/value_mv_LDR)-1); //conversion from mV to resistance in kOhm (due to the voltage divider)
-        value_Lux+=-100*R_LDR+10000; //conversion from kOhm to lux (calculated from datasheet)
+        value_Lux+=(-100*R_LDR+10000); //conversion from kOhm to lux (calculated from datasheet)
     }
     
     n_cycles++;  //number of times that the ISR has occurred
@@ -93,11 +94,15 @@ CY_ISR(Custom_ISR_ADC)
         
         if((1000/(50*n_samples)<slaveBuffer[1])){
             Timer_ISR_WritePeriod(1000/(50*n_samples));
+            
+        /*
+            Timer_ISR_WritePeriod(1000/slaveBuffer[1]*n_samples)); //se slaveBuffer[1] contiene la frequenza di trasmissione
+        */
         }  
         
     }
     
  }
-
+}
 
 /* [] END OF FILE */

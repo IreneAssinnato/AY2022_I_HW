@@ -35,10 +35,10 @@ int main(void)
     isr_StartEx(Custom_ISR_ADC);
     
     //set Control Register 0: 5 samples RICORDARSI DI RIMETTERLA A 0!
-    slaveBuffer[0]=0b00010111;
+    slaveBuffer[0]= 0; //0b00010111;
     
     //set Control Register 1: Timer Period equal to 4 RICORDARSI DI RIMETTERLA A 0!
-    slaveBuffer[1]=0b00000100;
+    slaveBuffer[1]= 0; //0b00000100;
     
     //set WHO I AM
     slaveBuffer[2]= 0xBC;
