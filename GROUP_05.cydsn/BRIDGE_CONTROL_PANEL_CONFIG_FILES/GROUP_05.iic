@@ -1,0 +1,4 @@
+w 08 00 17 p ;set Control Register 0 (Sampling both channels, 5 samples)
+w 08 01 04 p ;set Control Register 1 (Timer Period 4ms)
+w 08 03 p ;writing on the bus the address of data bytes 
+r 08 @1Temp @0Temp @1LDR @0LDR p ;reading data sampled
